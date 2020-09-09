@@ -241,6 +241,8 @@ request_header: token ows t_colon ows text ows t_crlf {
 	}
 
 };
+| {}
+
 
 
 /*
