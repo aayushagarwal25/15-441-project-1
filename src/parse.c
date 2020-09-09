@@ -53,26 +53,19 @@ Request * parse(char *buffer, int size, int socketFd) {
         request->header_count=0;
         //TODO You will need to handle resizing this in parser.y
         request->headers = (Request_header *) malloc(sizeof(Request_header));
-		//yyrestart(socketFd);
 		yyrestart(NULL);
 		set_parsing_options(buf, i, request);
-		printf("before yyparse");
-		//yy_flush_buffer();
-		//yyrestart(NULL);
 		if (yyparse() == SUCCESS) {
             return request;
 		}
-		else
-		{
-			printf("after yyparse");
-			//memset(buf, 0, 8192);
-
-		}
+		// else
+		// {
+		// 	free(request);
+		// }
 		
 	}
     //TODO Handle Malformed Requests
     printf("Parsing Failed\n");
-
 	return NULL;
 }
 

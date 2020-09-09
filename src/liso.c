@@ -28,6 +28,9 @@
 #define ECHO_PORT 9999
 #define BUF_SIZE 4096
 
+char *bad_response="HTTP/1.1 400 Bad Request\r\n\r\n";
+                            
+
 int close_socket(int sock)
 {
     if (close(sock))
@@ -41,9 +44,9 @@ int close_socket(int sock)
 int main(int argc, char* argv[])
 {
 
+    // Retrive the command line arguments
     char* arg1=argv[1];
     char* arg2=argv[2];
-    //printf("argv[1]=%s\n",argv[2]);
     char* arg3=argv[3];
     char* arg4=argv[4];
     char* arg5=argv[5];
@@ -51,13 +54,13 @@ int main(int argc, char* argv[])
     char* arg7=argv[7];
     char* arg8=argv[8];
 
+    // The port to be used for HTTP requests
     int http_port=atoi(arg1);
-    /*
-    TODO: fill the rest of the arguments
 
-    */
-   printf("http port= %d\n",http_port);
-    
+    /*
+    * TODO: fill the rest of the arguments
+    */  
+
     int sock, client_sock;
     ssize_t readret;
     socklen_t cli_size;
@@ -93,35 +96,41 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    fd_set master;    // master file descriptor list
-    fd_set read_fds;  // temp file descriptor list for select()
-    int fdmax;        // maximum file descriptor number
+    // Create the master and read fd set
+    fd_set master;    
+    fd_set read_fds;  
 
-    FD_ZERO(&master);    // clear the master and temp sets
+    // Maximum fd for select()
+    int fdmax;       
+
+    // Clear the sets
+    FD_ZERO(&master);    
     FD_ZERO(&read_fds);
 
-    // add the listener to the master set
+    // add the listener socket to the master set
     FD_SET(sock, &master);
 
-    // keep track of the biggest file descriptor
-    fdmax = sock; // so far, it's this one
+    // The biggest file descriptor
+    fdmax = sock; 
 
-    int i,j;
-    /* finally, loop waiting for input and then write it back */
+    int i;
+    // Run the server in a loop 
     while (1)
     {
-        read_fds = master; // copy it
-        //printf("Before select... waiting for new connections\n");
+        read_fds = master; 
         if(select(fdmax+1,&read_fds,NULL,NULL,NULL)==-1)
         {
+            // select() failed. Don't exit the server
             perror("select");
-            //exit(4);
         }
+        /*
+        * Code logic taken from Beej's guide of select()
+        * https://beej.us/guide/bgnet/examples/selectserver.c 
+        */
         for(i=0;i<=fdmax;i++)
         {
             if(FD_ISSET(i,&read_fds))
             {
-                //we got one
                 if(i==sock)
                 {
                     cli_size = sizeof(cli_addr);
@@ -133,105 +142,47 @@ int main(int argc, char* argv[])
                     }
                     else
                     {
-                        FD_SET(client_sock,&master); // add to master set
+                        // add the client socket to master set
+                        FD_SET(client_sock,&master);
                         if(client_sock > fdmax)
-                        {   // keep track of the max
+                        {   // update the max socket
                             fdmax = client_sock;
                         }
-                    }
-                    
+                    }  
                 }
                 else
                 { //handle data from client
                     readret=0;
-                    int flag=0;
                     fcntl(i, F_SETFL, fcntl(i, F_GETFL,0) | O_NONBLOCK);
-                
                     if((readret = recv(i, buf, BUF_SIZE, 0)) > 0)
                     {
-                        printf("At start of while\n");
-                        //for(j=0;j<=fdmax;j++)
-                        //{
-                        printf("received buffer= %s \nfrom client%d",buf,i);
                         Request *request = parse(buf,readret,i);
                         if(request==NULL)
                         {
-                            printf("************Bad request************\nExiting...");
-                            //request->http_method
-                            char *response="HTTP/1.1 400 Bad Request\r\n\r\n";
-
-                            if(send(i, response, 29, 0)==-1)
+                            // Bad request received
+                            //printf("++++++%d str=",strlen(bad_response));
+                            if(send(i, bad_response, strlen(bad_response), 0)==-1)
                             {
-                                //close_socket(i);
-                                //close_socket(sock);
                                 fprintf(stderr, "Error sending to client.\n");
-                                //return EXIT_FAILURE;
                             }
-                             //close_socket(i);
-                                //close_socket(sock);
-                            //memset(buf, 0, BUF_SIZE);
-                            //close_socket(i);
-                            //FD_CLR(i,&master);
-                            //free(request);
-                            flag=1;
-                            printf("*****BAD request send complete\n");
-                            //readret=0;
-                            //break;
-
-                            //exit(0);
+                            //printf("*****BAD request send complete\n");
                         }
-                        // else{
-                        //     printf("Not null\n");
-                        //     exit(0);
-                        // }
                         else 
                         {
-                            printf("**************Good request*******\n");
-                            printf("dsadsadsadsad header_count= %d",request->header_count);
-                            //free(request);
+                            //printf("**************Good request*******\n");
                             if (send(i, buf, readret, 0) != readret)
                             {
-                                //close_socket(i);
-                                //close_socket(sock);
                                 fprintf(stderr, "Error sending to client.\n");
-                                //return EXIT_FAILURE;
                             }
-                            //memset(buf, 0, BUF_SIZE);
                             fcntl(i, F_SETFL, fcntl(i, F_GETFL,0) &  ~O_NONBLOCK);
-                            //readret=0;
-                            //close_socket(i);
-                            //FD_CLR(i,&master);
-                            printf("*****good request send complete\n");
+                            //printf("*****good request send complete\n");
                         }
                     } 
                     if(readret<=0)
-                    {
-                        if(readret==0)
-                        {
-                            // connection closed
-                            printf("selectserver: socket %d hung up\n", i);
-                            close_socket(i);
-                            FD_CLR(i,&master);
-                        }
-                        else
-                        {       
-                            perror("recv");
-                            close_socket(i);
-                            FD_CLR(i,&master);
-                            //close_socket(sock);
-                            //fprintf(stderr, "Error reading from client socket.\n");
-                            //return EXIT_FAILURE;
-                        }
-                    }  
-                    
-
-                    /*if (close_socket(i))
-                    {
+                    {   
+                        close_socket(i);
                         FD_CLR(i,&master);
-                        close_socket(sock);
-                        fprintf(stderr, "Error closing client socket.\n");
-                        return EXIT_FAILURE;
-                    }*/
+                    }  
                 }
             }
         }

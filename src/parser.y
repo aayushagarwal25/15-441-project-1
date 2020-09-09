@@ -210,14 +210,12 @@ request_header: token ows t_colon ows text ows t_crlf {
     strcpy(parsing_request->headers[parsing_request->header_count].header_name, $1);
 	strcpy(parsing_request->headers[parsing_request->header_count].header_value, $5);
 	parsing_request->header_count++;
-	printf("c+++++=%d\n",parsing_request->header_count);
 	if(parsing_request->header_count>=1)
 	{
-		printf("fdafdafaa");
 		parsing_request->headers = (Request_header *) realloc(parsing_request->headers,sizeof(Request_header)*(parsing_request->header_count+1));
 		if(parsing_request->headers==NULL)
 		{
-			printf("Error memory");
+			printf("Memory Error ");
 			exit(0);
 		}
 	}
@@ -228,14 +226,12 @@ request_header: token ows t_colon ows text ows t_crlf {
     strcpy(parsing_request->headers[parsing_request->header_count].header_name, $2);
 	strcpy(parsing_request->headers[parsing_request->header_count].header_value, $6);
 	parsing_request->header_count++;
-	printf("c+++++=%d\n",parsing_request->header_count);
 	if(parsing_request->header_count>=1)
 	{
-		printf("fdafdafaa");
 		parsing_request->headers = (Request_header *) realloc(parsing_request->headers,sizeof(Request_header)*(parsing_request->header_count+1));
 		if(parsing_request->headers==NULL)
 		{
-			printf("Error memory");
+			printf("Memory Error");
 			exit(0);
 		}
 	}
