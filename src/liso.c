@@ -12,9 +12,6 @@
 *******************************************************************************/
 
 
-// FDSETSIZE?
-// select should use readfds and writefds?
-
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <stdio.h>
@@ -23,7 +20,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include "../include/parse.h"
- #include <fcntl.h> /* Added for the nonblocking socket */
+#include <fcntl.h>
 
 #define ECHO_PORT 9999
 #define BUF_SIZE 4096
@@ -114,7 +111,7 @@ int main(int argc, char* argv[])
     fdmax = sock; 
 
     int i;
-    // Run the server in a loop 
+    // Run the server in an infinite loop 
     while (1)
     {
         read_fds = master; 
@@ -124,7 +121,7 @@ int main(int argc, char* argv[])
             perror("select");
         }
         /*
-        * Code logic taken from Beej's guide of select()
+        * Code logic adapted from Beej's guide of select()
         * https://beej.us/guide/bgnet/examples/selectserver.c 
         */
         for(i=0;i<=fdmax;i++)
@@ -153,33 +150,31 @@ int main(int argc, char* argv[])
                 else
                 { //handle data from client
                     readret=0;
-                    fcntl(i, F_SETFL, fcntl(i, F_GETFL,0) | O_NONBLOCK);
+                    //fcntl(i, F_SETFL, fcntl(i, F_GETFL,0) | O_NONBLOCK);
                     if((readret = recv(i, buf, BUF_SIZE, 0)) > 0)
                     {
                         Request *request = parse(buf,readret,i);
                         if(request==NULL)
                         {
                             // Bad request received
-                            //printf("++++++%d str=",strlen(bad_response));
                             if(send(i, bad_response, strlen(bad_response), 0)==-1)
                             {
                                 fprintf(stderr, "Error sending to client.\n");
                             }
-                            //printf("*****BAD request send complete\n");
                         }
                         else 
                         {
-                            //printf("**************Good request*******\n");
+                            // Good request received
                             if (send(i, buf, readret, 0) != readret)
                             {
                                 fprintf(stderr, "Error sending to client.\n");
                             }
-                            fcntl(i, F_SETFL, fcntl(i, F_GETFL,0) &  ~O_NONBLOCK);
-                            //printf("*****good request send complete\n");
+                            //fcntl(i, F_SETFL, fcntl(i, F_GETFL,0) &  ~O_NONBLOCK);
                         }
                     } 
                     if(readret<=0)
                     {   
+                        // Close the client socket and clear the fd set
                         close_socket(i);
                         FD_CLR(i,&master);
                     }  
